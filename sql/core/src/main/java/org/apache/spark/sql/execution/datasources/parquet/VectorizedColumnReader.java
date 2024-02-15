@@ -105,8 +105,8 @@ public class VectorizedColumnReader {
   // The timezone conversion to apply to int96 timestamps. Null if no conversion.
   private final ZoneId convertTz;
   private static final ZoneId UTC = ZoneOffset.UTC;
-  private final String datetimeRebaseMode;
-  private final String int96RebaseMode;
+  private String datetimeRebaseMode;
+  private String int96RebaseMode;
 
   private boolean isDecimalTypeMatched(DataType dt) {
     DecimalType d = (DecimalType) dt;
@@ -370,7 +370,7 @@ public class VectorizedColumnReader {
             }
           }
         } else if (column.dataType() == DataTypes.DateType) {
-          final boolean failIfRebase = "EXCEPTION".equals(datetimeRebaseMode);
+          final boolean failIfRebase = false;
           for (int i = rowId; i < rowId + num; ++i) {
             if (!column.isNullAt(i)) {
               int julianDays = dictionary.decodeToInt(dictionaryIds.getDictId(i));
@@ -401,7 +401,7 @@ public class VectorizedColumnReader {
               }
             }
           } else {
-            final boolean failIfRebase = "EXCEPTION".equals(datetimeRebaseMode);
+            final boolean failIfRebase = false;
             for (int i = rowId; i < rowId + num; ++i) {
               if (!column.isNullAt(i)) {
                 long julianMillis = dictionary.decodeToLong(dictionaryIds.getDictId(i));
@@ -411,7 +411,7 @@ public class VectorizedColumnReader {
             }
           }
         } else if (originalType == OriginalType.TIMESTAMP_MICROS) {
-          final boolean failIfRebase = "EXCEPTION".equals(datetimeRebaseMode);
+          final boolean failIfRebase = false;
           for (int i = rowId; i < rowId + num; ++i) {
             if (!column.isNullAt(i)) {
               long julianMicros = dictionary.decodeToLong(dictionaryIds.getDictId(i));
@@ -440,7 +440,7 @@ public class VectorizedColumnReader {
         break;
       case INT96:
         if (column.dataType() == DataTypes.TimestampType) {
-          final boolean failIfRebase = "EXCEPTION".equals(int96RebaseMode);
+          final boolean failIfRebase = false;
           if (!shouldConvertTimestamps()) {
             if ("CORRECTED".equals(int96RebaseMode)) {
               for (int i = rowId; i < rowId + num; ++i) {
@@ -548,6 +548,8 @@ public class VectorizedColumnReader {
   private void readIntBatch(int rowId, int num, WritableColumnVector column) throws IOException {
     // This is where we implement support for the valid type conversions.
     // TODO: implement remaining type conversions
+    datetimeRebaseMode = "LEGACY";
+    int96RebaseMode = "LEGACY";
     if (column.dataType() == DataTypes.IntegerType ||
         canReadAsIntDecimal(column.dataType())) {
       defColumn.readIntegers(
@@ -563,7 +565,7 @@ public class VectorizedColumnReader {
         defColumn.readIntegers(
           num, column, rowId, maxDefLevel, (VectorizedValuesReader) dataColumn);
       } else {
-        boolean failIfRebase = "EXCEPTION".equals(datetimeRebaseMode);
+        boolean failIfRebase = false;
         defColumn.readIntegersWithRebase(
           num, column, rowId, maxDefLevel, (VectorizedValuesReader) dataColumn, failIfRebase);
       }
@@ -574,6 +576,8 @@ public class VectorizedColumnReader {
 
   private void readLongBatch(int rowId, int num, WritableColumnVector column) throws IOException {
     // This is where we implement support for the valid type conversions.
+    datetimeRebaseMode = "LEGACY";
+    int96RebaseMode = "LEGACY";
     if (column.dataType() == DataTypes.LongType ||
         canReadAsLongDecimal(column.dataType())) {
       defColumn.readLongs(
@@ -583,7 +587,7 @@ public class VectorizedColumnReader {
         defColumn.readLongs(
           num, column, rowId, maxDefLevel, (VectorizedValuesReader) dataColumn);
       } else {
-        boolean failIfRebase = "EXCEPTION".equals(datetimeRebaseMode);
+        boolean failIfRebase = false;
         defColumn.readLongsWithRebase(
           num, column, rowId, maxDefLevel, (VectorizedValuesReader) dataColumn, failIfRebase);
       }
@@ -597,7 +601,7 @@ public class VectorizedColumnReader {
           }
         }
       } else {
-        final boolean failIfRebase = "EXCEPTION".equals(datetimeRebaseMode);
+        final boolean failIfRebase = false;
         for (int i = 0; i < num; i++) {
           if (defColumn.readInteger() == maxDefLevel) {
             long julianMicros = DateTimeUtils.millisToMicros(dataColumn.readLong());
@@ -637,12 +641,14 @@ public class VectorizedColumnReader {
   private void readBinaryBatch(int rowId, int num, WritableColumnVector column) throws IOException {
     // This is where we implement support for the valid type conversions.
     // TODO: implement remaining type conversions
+    datetimeRebaseMode = "LEGACY";
+    int96RebaseMode = "LEGACY";
     VectorizedValuesReader data = (VectorizedValuesReader) dataColumn;
     if (column.dataType() == DataTypes.StringType || column.dataType() == DataTypes.BinaryType
             || canReadAsBinaryDecimal(column.dataType())) {
       defColumn.readBinarys(num, column, rowId, maxDefLevel, data);
     } else if (column.dataType() == DataTypes.TimestampType) {
-      final boolean failIfRebase = "EXCEPTION".equals(int96RebaseMode);
+      final boolean failIfRebase = false;
       if (!shouldConvertTimestamps()) {
         if ("CORRECTED".equals(int96RebaseMode)) {
           for (int i = 0; i < num; i++) {
